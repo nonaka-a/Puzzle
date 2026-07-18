@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jigsaw Puzzle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- タイトル画面 -->
+  <div id="title-screen" class="screen">
+    <div class="card">
+      <h1>Jigsaw Puzzle</h1>
+      
+      <div class="form-group">
+        <label>1. ピースの数を選択</label>
+        <div class="pieces-select">
+          <button type="button" class="btn-select active" data-pieces="30">30</button>
+          <button type="button" class="btn-select" data-pieces="60">60</button>
+          <button type="button" class="btn-select" data-pieces="100">100</button>
+          <button type="button" class="btn-select" data-pieces="300">300</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>2. パズル画像を選択</label>
+        <div class="image-upload-area">
+          <input type="file" id="image-input" accept="image/*" style="display: none;">
+          <button type="button" id="upload-trigger" class="btn-secondary">ファイルを選択</button>
+          <p id="file-name">画像が選択されていません</p>
+          <div id="image-preview-container" class="hidden">
+            <img id="image-preview" src="" alt="プレビュー">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="btn-start" class="btn-primary" disabled>ゲームスタート</button>
+        <button type="button" id="btn-load" class="btn-secondary hidden">セーブデータから再開</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ゲーム画面 -->
+  <div id="game-screen" class="screen hidden">
+    <!-- 上部ナビゲーション -->
+    <header class="game-header">
+      <button type="button" id="btn-back-to-title" class="btn-nav">タイトルへ戻る</button>
+      
+      <!-- ズームコントロール -->
+      <div class="zoom-controls">
+        <button type="button" id="btn-zoom-out" class="btn-nav">-</button>
+        <span class="zoom-label">ZOOM</span>
+        <button type="button" id="btn-zoom-in" class="btn-nav">+</button>
+      </div>
+
+      <div class="status-panel">
+        <div class="status-item">TIME: <span id="timer-val">00:00</span></div>
+        <div class="status-item">REMAIN: <span id="remaining-val">0</span> / <span id="total-val">0</span></div>
+      </div>
+      <button type="button" id="btn-save" class="btn-nav btn-save-action">セーブ</button>
+    </header>
+
+   <!-- メインコンテンツ領域（プレビューと作業領域） -->
+    <!-- 外枠（スクロールではなくCSS TransformとJSでパン操作を行うためのコンテナ） -->
+    <main class="game-main" id="game-main">
+      <!-- ズーム・パンに同期する背景レイヤー -->
+      <div id="game-bg-layer"></div>
+      <div id="puzzle-board" class="puzzle-board">
+        <!-- 背景のうっすらしたガイド画像 -->
+        <div id="board-guide-container">
+          <img id="board-guide-img" src="" alt="ガイド">
+        </div>
+        <!-- ピースが配置されるキャンバスレイヤー -->
+        <div id="canvas-container"></div>
+      </div>
+    </main>
+
+    <!-- 下部操作パネル -->
+    <footer class="game-footer">
+      <div class="footer-layout">
+        <!-- トレイ（リストウィンドウ） -->
+        <div class="piece-tray-container">
+          <div id="piece-tray" class="piece-tray">
+            <!-- 未配置のピースが並ぶ -->
+          </div>
+        </div>
+        
+        <!-- トレイの「外」に配置されたコントロール群 -->
+        <div class="control-sidebar">
+          <span class="control-title">盤面上の選択ピース操作</span>
+          <button type="button" id="btn-rotate-right" class="btn-control" disabled>右に90度回転</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- クリア時のモーダルウィンドウ -->
+  <div id="clear-modal" class="modal-overlay hidden">
+    <div class="card modal-content">
+      <h1 class="modal-title">🎉 CLEAR! 🎉</h1>
+      <p class="modal-time">クリアタイム: <span id="modal-time-val"></span></p>
+      <button type="button" id="btn-modal-title" class="btn-primary">タイトルへ戻る</button>
+    </div>
+  </div>
+
+  <!-- 分離されたスクリプト群 -->
+  <script src="audio.js"></script>
+  <script src="board.js"></script>
+  <script src="dragdrop.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
