@@ -12,6 +12,13 @@ const PuzzleDragDrop = {
       if (piece.isLocked) return;
       e.stopPropagation();
 
+      // Pointer Capture を設定し、要素外へのドラッグ中もイベント追従を維持する
+      if (e.pointerId !== undefined) {
+        try {
+          trayEl.setPointerCapture(e.pointerId);
+        } catch (err) {}
+      }
+
       startX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
       startY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
       isDraggingOut = false;
@@ -21,6 +28,7 @@ const PuzzleDragDrop = {
 
       document.addEventListener('pointermove', onPointerMove, { passive: false });
       document.addEventListener('pointerup', onPointerUp);
+      document.addEventListener('pointercancel', onPointerCancel);
     };
 
     const onPointerMove = (e) => {
@@ -38,22 +46,39 @@ const PuzzleDragDrop = {
         // 縦方向（トレイから外に引き出す動き）の移動が一定値を超えた場合のみドラッグを開始
         if (Math.abs(dy) > 15 && Math.abs(dy) > Math.abs(dx)) {
           isDraggingOut = true;
-          piece.inTray = false;
           
+          // ドラッグ元の要素を一時的に非表示にし、DOMからは削除しない（タッチ追従ロストを防止）
+          trayEl.style.opacity = '0';
+          trayEl.style.pointerEvents = 'none';
+
           // ズームを考慮した盤面上の座標計算
           const rect = App.el.puzzleBoard.getBoundingClientRect();
           const scale = App.state.zoomScale;
           piece.x = (clientX - rect.left) / scale - piece.width / 2;
           piece.y = (clientY - rect.top) / scale - piece.height / 2;
 
-          App.renderTray();
-          App.renderBoardPieces();
+          // 盤面に表示するドラッグ用のクローンを動的に生成
+          const pad = parseFloat(piece.canvas.dataset.pad);
+          dragClone = document.createElement('div');
+          dragClone.classList.add('puzzle-piece-canvas');
+          dragClone.style.left = `${piece.x - pad}px`;
+          dragClone.style.top = `${piece.y - pad}px`;
+          dragClone.style.width = `${piece.canvas.width}px`;
+          dragClone.style.height = `${piece.canvas.height}px`;
+          dragClone.style.zIndex = '100';
 
-          dragClone = App.el.canvasContainer.querySelector(`.puzzle-piece-canvas[data-id="${piece.id}"]`);
-          if (dragClone) {
-            dragClone.style.zIndex = 100;
-            App.state.activeDragId = piece.id;
-          }
+          const pieceCanvas = document.createElement('canvas');
+          pieceCanvas.width = piece.canvas.width;
+          pieceCanvas.height = piece.canvas.height;
+          const pctx = pieceCanvas.getContext('2d');
+          pctx.translate(pieceCanvas.width / 2, pieceCanvas.height / 2);
+          pctx.rotate((piece.rotation * Math.PI) / 180);
+          pctx.drawImage(piece.canvas, -pieceCanvas.width / 2, -pieceCanvas.height / 2);
+
+          dragClone.appendChild(pieceCanvas);
+          App.el.canvasContainer.appendChild(dragClone);
+
+          App.state.activeDragId = piece.id;
         }
       }
 
@@ -73,13 +98,55 @@ const PuzzleDragDrop = {
     const onPointerUp = (e) => {
       document.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('pointercancel', onPointerCancel);
+
+      if (e && e.pointerId !== undefined) {
+        try {
+          trayEl.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+      }
+
+      // 元の要素のスタイルを戻す
+      trayEl.style.opacity = '';
+      trayEl.style.pointerEvents = '';
 
       if (isDraggingOut) {
-        if (dragClone) {
-          dragClone.style.zIndex = 10;
-        }
         App.state.activeDragId = null;
+
+        // 動的クローンを削除（checkSnap内のrenderで正式に盤面描画されるため）
+        if (dragClone && dragClone.parentNode) {
+          dragClone.parentNode.removeChild(dragClone);
+        }
+
+        piece.inTray = false;
         this.checkSnap(piece, dragClone);
+      }
+    };
+
+    const onPointerCancel = (e) => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('pointercancel', onPointerCancel);
+
+      if (e && e.pointerId !== undefined) {
+        try {
+          trayEl.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+      }
+
+      trayEl.style.opacity = '';
+      trayEl.style.pointerEvents = '';
+
+      if (isDraggingOut) {
+        App.state.activeDragId = null;
+        if (dragClone && dragClone.parentNode) {
+          dragClone.parentNode.removeChild(dragClone);
+        }
+        piece.inTray = true;
+        piece.x = 0;
+        piece.y = 0;
+        App.renderTray();
+        App.renderBoardPieces();
       }
     };
 

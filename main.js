@@ -122,6 +122,23 @@ const App = {
     // ズームコントロール
     this.el.btnZoomIn.addEventListener('click', () => this.setZoom(this.state.zoomScale + 0.2));
     this.el.btnZoomOut.addEventListener('click', () => this.setZoom(this.state.zoomScale - 0.2));
+
+    // iPad/iOS Safari 等でのダブルタップによるブラウザズームを防止
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 350) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+
+    // iPad/iOS Safari 等での2本指ピンチによるブラウザズームを防止
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
   },
 
   // ボードの背景をドラッグ（スワイプ）して画面をパン（移動）させる処理
