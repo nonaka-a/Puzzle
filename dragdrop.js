@@ -10,11 +10,10 @@ const PuzzleDragDrop = {
 
     const onPointerDown = (e) => {
       if (piece.isLocked) return;
-      e.preventDefault();
       e.stopPropagation();
 
-      startX = e.clientX || e.touches[0].clientX;
-      startY = e.clientY || e.touches[0].clientY;
+      startX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      startY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
       isDraggingOut = false;
 
       App.selectPiece(piece.id);
@@ -25,34 +24,41 @@ const PuzzleDragDrop = {
     };
 
     const onPointerMove = (e) => {
-      e.preventDefault();
-      const clientX = e.clientX !== undefined ? e.clientX : e.touches[0].clientX;
-      const clientY = e.clientY !== undefined ? e.clientY : e.touches[0].clientY;
+      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
       const dx = clientX - startX;
       const dy = clientY - startY;
 
-      if (!isDraggingOut && (Math.abs(dx) > 15 || Math.abs(dy) > 15)) {
-        isDraggingOut = true;
-        piece.inTray = false;
-        
-        // ズームを考慮した盤面上の座標計算
-        const rect = App.el.puzzleBoard.getBoundingClientRect();
-        const scale = App.state.zoomScale;
-        piece.x = (clientX - rect.left) / scale - piece.width / 2;
-        piece.y = (clientY - rect.top) / scale - piece.height / 2;
+      if (!isDraggingOut) {
+        // 横方向へのスワイプはトレイのスクロール動作として許容し、ドラッグを開始しない
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+          return;
+        }
+        // 縦方向（トレイから外に引き出す動き）の移動が一定値を超えた場合のみドラッグを開始
+        if (Math.abs(dy) > 15 && Math.abs(dy) > Math.abs(dx)) {
+          isDraggingOut = true;
+          piece.inTray = false;
+          
+          // ズームを考慮した盤面上の座標計算
+          const rect = App.el.puzzleBoard.getBoundingClientRect();
+          const scale = App.state.zoomScale;
+          piece.x = (clientX - rect.left) / scale - piece.width / 2;
+          piece.y = (clientY - rect.top) / scale - piece.height / 2;
 
-        App.renderTray();
-        App.renderBoardPieces();
+          App.renderTray();
+          App.renderBoardPieces();
 
-        dragClone = App.el.canvasContainer.querySelector(`.puzzle-piece-canvas[data-id="${piece.id}"]`);
-        if (dragClone) {
-          dragClone.style.zIndex = 100;
-          App.state.activeDragId = piece.id;
+          dragClone = App.el.canvasContainer.querySelector(`.puzzle-piece-canvas[data-id="${piece.id}"]`);
+          if (dragClone) {
+            dragClone.style.zIndex = 100;
+            App.state.activeDragId = piece.id;
+          }
         }
       }
 
       if (isDraggingOut && dragClone) {
+        e.preventDefault();
         const rect = App.el.puzzleBoard.getBoundingClientRect();
         const scale = App.state.zoomScale;
         piece.x = (clientX - rect.left) / scale - piece.width / 2;
